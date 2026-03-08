@@ -91,7 +91,7 @@ Uso en interfaz:
 
 ## Uso
 
-Podrás usar estas etidades para visualizar el estado así como crear automatizaciones para informate, por ejemplo, 
+Podrás usar estas entidades para visualizar el estado así como crear automatizaciones para informate, por ejemplo, 
 cuando se produzca un cambio en el atributo "Emitida" de última fáctura.
 
 
@@ -99,5 +99,5 @@ Ejemplo de panel (dashboard):
 
 Puedes encontrar un panel de ejemplo listo para usar en [ha/dashboard.yml](ha/dashboard.yml). Copia su contenido en tu dashboard (modo YAML) o adáptalo a tus necesidades.
 
-![card.png](img/card.png)
+![card.png](img/dashboard.png)
 
