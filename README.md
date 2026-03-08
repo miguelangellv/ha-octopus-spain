@@ -35,7 +35,11 @@ Copias la URL del repositorio ( https://github.com/mandinger/fork-ha-octopus-spa
 
 Una vez instalado, ve a _Dispositivos y Servicios -> Añadir Integración_ y busca _Octopus_.
 
-El asistente te solicitará tu email y contraseña de [Octopus Energy](https://octopusenergy.es/)
+Durante la configuración podrás elegir el tipo de autenticación:
+- Credenciales (email y contraseña)
+- API Key
+
+Si eliges API Key, introduce tu api key (detalles en como obtener api key en octopus españa mas adelante); no se requiere email/contraseña. Podrás cambiar el método más tarde desde las Opciones de la integración. Para más información sobre tu cuenta, consulta [Octopus Energy](https://octopusenergy.es/).
 
 
 
@@ -53,6 +57,37 @@ Esta entidad devuelve el coste de tu última factura.
 
 Adicionalmente, en los atributos, están disponibles las fechas de emisión de esa factura así el periodo (inicio y final) de la misma.
 
+### Sensores de Factura (individuales)
+Además del sensor agregado "Última Factura Octopus", el componente expone sensores individuales para cada campo de la última factura. Esto facilita su uso directo en tarjetas, automatizaciones y gráficos:
+
+- sensor.factura_importe_facturado: Importe facturado (€)
+- sensor.factura_total_bruto: Total bruto (€)
+- sensor.factura_total_neto: Total neto (€)
+- sensor.factura_impuestos: Impuestos (€)
+- sensor.factura_emitida: Fecha de emisión (fecha)
+- sensor.factura_inicio_cargos: Inicio de cargos (fecha)
+- sensor.factura_pdf: Estado del PDF (atributo url con el enlace)
+- sensor.factura_id: Identificador de la factura
+
+Nota: Si tienes varias cuentas en Octopus, los nombres visibles de las entidades incluirán el identificador de la cuenta entre paréntesis, p. ej. "Factura (mi_cuenta): Total neto".
+
+Para ver una tarjeta de ejemplo con estos sensores, consulta el panel de muestra en [ha/dashboard.yml](ha/dashboard.yml).
+
+
+## Consumo eléctrico (estadísticas)
+El componente no ofrece consumo en tiempo real. En su lugar, importa de forma retroactiva los datos horarios de consumo facilitados por Octopus y los inserta en el sistema de estadísticas de Home Assistant.
+
+- Fuente: datos horarios (hourly) de consumo por cuenta.
+- Funcionamiento: en cada actualización se añaden las horas faltantes desde la última hora importada. Si no existen estadísticas previas, se inicia desde el día 1 del mes actual (UTC).
+- Tipo de dato: estadística externa con suma acumulada por hora.
+- Unidad: kWh.
+- Identificador de estadística (`statistic_id`): `octopus_spain:energy_consumption_<cuenta_slug>`.
+- Nombre mostrado en HA: "Consumo Electrico" o "Consumo Electrico (<cuenta>)" cuando hay varias cuentas.
+
+Uso en interfaz:
+- Tarjeta "Gráfico de estadísticas": selecciona la estadística con el nombre anterior para visualizar la serie acumulada por horas.
+- Panel de Energía: puedes seleccionar esta estadística como fuente de consumo (al ser kWh con suma acumulada y marcada como externa).
+- Mas detalles pendientes de documentación.
 
 ## Uso
 
@@ -60,31 +95,9 @@ Podrás usar estas etidades para visualizar el estado así como crear automatiza
 cuando se produzca un cambio en el atributo "Emitida" de última fáctura.
 
 
-Una forma de representar los datos sería esta:
+Ejemplo de panel (dashboard):
 
-```yaml
-title: Octopus Spain
-type: entities
-entities:
-  - entity: sensor.ultima_factura_octopus
-  - entity: sensor.solar_wallet
-  - entity: sensor.octopus_credit
-  - type: attribute
-    entity: sensor.ultima_factura_octopus
-    name: Inicio
-    icon: mdi:calendar-start
-    attribute: Inicio
-  - type: attribute
-    entity: sensor.ultima_factura_octopus
-    name: Fin
-    icon: mdi:calendar-end
-    attribute: Fin
-  - type: attribute
-    entity: sensor.ultima_factura_octopus
-    name: Emitida
-    icon: mdi:email-fast-outline
-    attribute: Emitida
-```
+Puedes encontrar un panel de ejemplo listo para usar en [ha/dashboard.yml](ha/dashboard.yml). Copia su contenido en tu dashboard (modo YAML) o adáptalo a tus necesidades.
 
 ![card.png](img/card.png)
 
