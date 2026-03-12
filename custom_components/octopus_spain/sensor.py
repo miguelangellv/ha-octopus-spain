@@ -82,7 +82,7 @@ class OctopusWallet(CoordinatorEntity, SensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        self._state = self.coordinator.data[self._account][self._key]
+        self._state = self.coordinator.data[self._account].get(self._key)
         self.async_write_ha_state()
 
     @property
