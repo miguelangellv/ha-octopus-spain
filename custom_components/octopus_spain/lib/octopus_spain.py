@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from python_graphql_client import GraphqlClient
 
@@ -57,17 +57,21 @@ class OctopusSpain:
               accountBillingInfo(accountNumber: $account) {
                 ledgers {
                   ledgerType
-                  statementsWithDetails(first: 1) {
-                    edges {
-                      node {
-                        amount
-                        consumptionStartDate
-                        consumptionEndDate
-                        issuedDate
+                  balance
+                }
+              }
+              account(accountNumber: $account) {
+                bills(first: 1) {
+                  edges {
+                    node {
+                      issuedDate
+                      fromDate
+                      toDate
+                      ... on InvoiceType {
+                        grossAmount
                       }
                     }
                   }
-                  balance
                 }
               }
             }
@@ -75,18 +79,20 @@ class OctopusSpain:
         headers = {"authorization": self._token}
         client = GraphqlClient(endpoint=GRAPH_QL_ENDPOINT, headers=headers)
         response = await client.execute_async(query, {"account": account})
-        ledgers = response["data"]["accountBillingInfo"]["ledgers"]
+        data = response["data"]
+        ledgers = data["accountBillingInfo"]["ledgers"]
         electricity = next(filter(lambda x: x['ledgerType'] == ELECTRICITY_LEDGER, ledgers), None)
         solar_wallet = next(filter(lambda x: x['ledgerType'] == SOLAR_WALLET_LEDGER, ledgers), {'balance': 0})
 
         if not electricity:
             raise Exception("Electricity ledger not found")
 
-        invoices = electricity["statementsWithDetails"]["edges"]
+        bills = data.get("account", {}).get("bills", {}).get("edges", [])
 
-        if len(invoices) == 0:
+        if len(bills) == 0:
             return {
-                'solar_wallet': None,
+                'solar_wallet': (float(solar_wallet["balance"]) / 100),
+                'octopus_credit': (float(electricity["balance"]) / 100),
                 'last_invoice': {
                     'amount': None,
                     'issued': None,
@@ -95,16 +101,15 @@ class OctopusSpain:
                 }
             }
 
-        invoice = invoices[0]["node"]
+        invoice = bills[0]["node"]
 
-        # Los timedelta son bastante chapuzas, habrá que arreglarlo
         return {
             "solar_wallet": (float(solar_wallet["balance"]) / 100),
             "octopus_credit": (float(electricity["balance"]) / 100),
             "last_invoice": {
-                "amount": invoice["amount"] if invoice["amount"] else 0,
+                "amount": (float(invoice["grossAmount"]) / 100) if invoice.get("grossAmount") is not None else 0,
                 "issued": datetime.fromisoformat(invoice["issuedDate"]).date(),
-                "start": (datetime.fromisoformat(invoice["consumptionStartDate"]) + timedelta(hours=2)).date(),
-                "end": (datetime.fromisoformat(invoice["consumptionEndDate"]) - timedelta(seconds=1)).date(),
+                "start": datetime.fromisoformat(invoice["fromDate"]).date(),
+                "end": datetime.fromisoformat(invoice["toDate"]).date(),
             },
         }
