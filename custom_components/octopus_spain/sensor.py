@@ -1,3 +1,5 @@
+"""Sensor platform for Octopus Spain."""
+
 import logging
 from datetime import timedelta
 from typing import Mapping, Any
@@ -7,21 +9,17 @@ from tariff_td import Tariff20TD
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, CoordinatorEntity
-from .const import (
-    CONF_PASSWORD,
-    CONF_EMAIL, UPDATE_INTERVAL
-)
 
 from homeassistant.const import (
     CURRENCY_EURO,
 )
 
-from homeassistant.components.sensor import (
-    SensorEntityDescription, SensorEntity, SensorStateClass
-)
+from homeassistant.components.sensor import SensorEntityDescription, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+from .const import CONF_PASSWORD, CONF_EMAIL, UPDATE_INTERVAL, PERIOD_PEAK_WITH_TAXES, PERIOD_STANDARD_WITH_TAXES, PERIOD_VALLEY_WITH_TAXES
 from .lib.octopus_spain import OctopusSpain
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,6 +29,8 @@ PERIOD_KEY = {"P1": "peak", "P2": "standard", "P3": "valley"}
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
+    """Setup sensor platform."""
+
     email = entry.data[CONF_EMAIL]
     password = entry.data[CONF_PASSWORD]
 
@@ -41,20 +41,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     accounts = coordinator.data.keys()
     single = len(accounts) == 1
     for account in accounts:
-        sensors.append(OctopusWallet(account, 'solar_wallet', 'Solar Wallet', coordinator, single))
-        sensors.append(OctopusWallet(account, 'octopus_credit', 'Octopus Credit', coordinator, single))
+        sensors.append(OctopusWallet(account, "solar_wallet", "Solar Wallet", coordinator, single))
+        sensors.append(OctopusWallet(account, "octopus_credit", "Octopus Credit", coordinator, single))
         sensors.append(OctopusInvoice(account, coordinator, single))
-        if coordinator.data[account].get('prices'):
+        if coordinator.data[account].get("prices"):
             sensors.append(OctopusCurrentPrice(account, coordinator, single))
-            sensors.append(OctopusPrice(account, 'peak', 'Precio Punta', coordinator, single))
-            sensors.append(OctopusPrice(account, 'standard', 'Precio Llano', coordinator, single))
-            sensors.append(OctopusPrice(account, 'valley', 'Precio Valle', coordinator, single))
-            sensors.append(OctopusPrice(account, 'surplus', 'Precio Excedente', coordinator, single))
+            sensors.append(OctopusPrice(account, "peak", "Precio Punta", coordinator, single))
+            sensors.append(OctopusPrice(account, "standard", "Precio Llano", coordinator, single))
+            sensors.append(OctopusPrice(account, "valley", "Precio Valle", coordinator, single))
+            sensors.append(OctopusPrice(account, "surplus", "Precio Excedente", coordinator, single))
 
     async_add_entities(sensors)
 
 
 class OctopusCoordinator(DataUpdateCoordinator):
+    """Coordinator for Octopus Spain data."""
 
     def __init__(self, hass: HomeAssistant, email: str, password: str):
         super().__init__(hass=hass, logger=_LOGGER, name="Octopus Spain", update_interval=timedelta(hours=UPDATE_INTERVAL))
@@ -72,6 +73,7 @@ class OctopusCoordinator(DataUpdateCoordinator):
 
 
 class OctopusWallet(CoordinatorEntity, SensorEntity):
+    """Representation of an Octopus Wallet."""
 
     def __init__(self, account: str, key: str, name: str, coordinator, single: bool):
         super().__init__(coordinator=coordinator)
@@ -85,7 +87,7 @@ class OctopusWallet(CoordinatorEntity, SensorEntity):
             key=f"{key}_{account}",
             icon="mdi:piggy-bank-outline",
             native_unit_of_measurement=CURRENCY_EURO,
-            state_class=SensorStateClass.MEASUREMENT
+            state_class=SensorStateClass.MEASUREMENT,
         )
 
     async def async_added_to_hass(self) -> None:
@@ -104,6 +106,7 @@ class OctopusWallet(CoordinatorEntity, SensorEntity):
 
 
 class OctopusInvoice(CoordinatorEntity, SensorEntity):
+    """Representation of an Octopus Invoice."""
 
     def __init__(self, account: str, coordinator, single: bool):
         super().__init__(coordinator=coordinator)
@@ -116,7 +119,7 @@ class OctopusInvoice(CoordinatorEntity, SensorEntity):
             key=f"last_invoice_{account}",
             icon="mdi:currency-eur",
             native_unit_of_measurement=CURRENCY_EURO,
-            state_class=SensorStateClass.MEASUREMENT
+            state_class=SensorStateClass.MEASUREMENT,
         )
 
     async def async_added_to_hass(self) -> None:
@@ -126,13 +129,9 @@ class OctopusInvoice(CoordinatorEntity, SensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        data = self.coordinator.data[self._account]['last_invoice']
-        self._state = data['amount']
-        self._attrs = {
-            'Inicio': data['start'],
-            'Fin': data['end'],
-            'Emitida': data['issued']
-        }
+        data = self.coordinator.data[self._account]["last_invoice"]
+        self._state = data["amount"]
+        self._attrs = {"Inicio": data["start"], "Fin": data["end"], "Emitida": data["issued"]}
         self.async_write_ha_state()
 
     @property
@@ -145,6 +144,7 @@ class OctopusInvoice(CoordinatorEntity, SensorEntity):
 
 
 class OctopusPrice(CoordinatorEntity, SensorEntity):
+    """Representation of an Octopus Price."""
 
     def __init__(self, account: str, key: str, name: str, coordinator, single: bool):
         super().__init__(coordinator=coordinator)
@@ -158,7 +158,7 @@ class OctopusPrice(CoordinatorEntity, SensorEntity):
             key=f"{key}_price_{account}",
             icon="mdi:transmission-tower-export" if key == "surplus" else "mdi:transmission-tower",
             native_unit_of_measurement=PRICE_PER_KWH,
-            state_class=SensorStateClass.MEASUREMENT
+            state_class=SensorStateClass.MEASUREMENT,
         )
 
     async def async_added_to_hass(self) -> None:
@@ -167,7 +167,7 @@ class OctopusPrice(CoordinatorEntity, SensorEntity):
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        prices = self.coordinator.data[self._account].get('prices') or {}
+        prices = self.coordinator.data[self._account].get("prices") or {}
         if self._key == "surplus":
             self._state = prices.get("surplus")
         else:
@@ -185,6 +185,7 @@ class OctopusPrice(CoordinatorEntity, SensorEntity):
 
 
 class OctopusCurrentPrice(CoordinatorEntity, SensorEntity):
+    """Representation of an Octopus Current Price."""
 
     def __init__(self, account: str, coordinator, single: bool):
         super().__init__(coordinator=coordinator)
@@ -197,7 +198,7 @@ class OctopusCurrentPrice(CoordinatorEntity, SensorEntity):
             key=f"current_price_{account}",
             icon="mdi:transmission-tower-import",
             native_unit_of_measurement=PRICE_PER_KWH,
-            state_class=SensorStateClass.MEASUREMENT
+            state_class=SensorStateClass.MEASUREMENT,
         )
 
     async def async_added_to_hass(self) -> None:
@@ -206,7 +207,7 @@ class OctopusCurrentPrice(CoordinatorEntity, SensorEntity):
         self._update()
 
     @callback
-    def _tick(self, now) -> None:
+    def _tick(self, _) -> None:
         self._update()
 
     @callback
@@ -214,11 +215,11 @@ class OctopusCurrentPrice(CoordinatorEntity, SensorEntity):
         self._update()
 
     def _update(self) -> None:
-        prices = self.coordinator.data[self._account].get('prices') or {}
+        prices = self.coordinator.data[self._account].get("prices") or {}
         tariff = Tariff20TD(
-            p1=prices.get("peak_with_taxes"),
-            p2=prices.get("standard_with_taxes"),
-            p3=prices.get("valley_with_taxes"),
+            p1=prices.get(PERIOD_PEAK_WITH_TAXES),
+            p2=prices.get(PERIOD_STANDARD_WITH_TAXES),
+            p3=prices.get(PERIOD_VALLEY_WITH_TAXES),
         )
         now = dt_util.now()
         period = tariff.get_period(now)

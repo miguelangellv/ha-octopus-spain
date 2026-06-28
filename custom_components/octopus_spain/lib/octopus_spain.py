@@ -1,3 +1,5 @@
+"""Octopus Spain API."""
+
 from datetime import datetime
 
 from python_graphql_client import GraphqlClient
@@ -8,12 +10,15 @@ ELECTRICITY_LEDGER = "SPAIN_ELECTRICITY_LEDGER"
 
 
 class OctopusSpain:
+    """Octopus Spain API."""
+
     def __init__(self, email, password):
         self._email = email
         self._password = password
         self._token = None
 
     async def login(self):
+        """Login to Octopus Spain API."""
         mutation = """
            mutation obtainKrakenToken($input: ObtainJSONWebTokenInput!) {
               obtainKrakenToken(input: $input) {
@@ -33,6 +38,8 @@ class OctopusSpain:
         return True
 
     async def accounts(self):
+        """Get account names from Octopus Spain API."""
+
         query = """
              query getAccountNames{
                 viewer {
@@ -52,6 +59,8 @@ class OctopusSpain:
         return list(map(lambda a: a["number"], response["data"]["viewer"]["accounts"]))
 
     async def account(self, account: str):
+        """Get account data from Octopus Spain API."""
+
         query = """
             query ($account: String!) {
               accountBillingInfo(accountNumber: $account) {
@@ -94,16 +103,16 @@ class OctopusSpain:
         response = await client.execute_async(query, {"account": account})
         data = response["data"]
         ledgers = data["accountBillingInfo"]["ledgers"]
-        electricity = next(filter(lambda x: x['ledgerType'] == ELECTRICITY_LEDGER, ledgers), None)
-        solar_wallet = next(filter(lambda x: x['ledgerType'] == SOLAR_WALLET_LEDGER, ledgers), {'balance': 0})
+        electricity = next(filter(lambda x: x["ledgerType"] == ELECTRICITY_LEDGER, ledgers), None)
+        solar_wallet = next(filter(lambda x: x["ledgerType"] == SOLAR_WALLET_LEDGER, ledgers), {"balance": 0})
 
         if not electricity:
-            raise Exception("Electricity ledger not found")
+            raise ValueError("Electricity ledger not found")
 
         bills = data.get("account", {}).get("bills", {}).get("edges", [])
 
         if len(bills) == 0:
-            last_invoice = {'amount': None, 'issued': None, 'start': None, 'end': None}
+            last_invoice = {"amount": None, "issued": None, "start": None, "end": None}
         else:
             invoice = bills[0]["node"]
             last_invoice = {

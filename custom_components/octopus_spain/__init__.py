@@ -1,4 +1,5 @@
-"""Balance Neto"""
+"""Octopus Spain integration."""
+
 from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
@@ -11,6 +12,7 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Octopus Spain from a config entry."""
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     entry.async_on_unload(entry.add_update_listener(_async_update_options))
@@ -25,7 +27,5 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
 async def _async_update_options(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
     """Handle options update."""
     # update entry replacing data with new options
-    hass.config_entries.async_update_entry(
-        config_entry, data={**config_entry.data, **config_entry.options}
-    )
+    hass.config_entries.async_update_entry(config_entry, data={**config_entry.data, **config_entry.options})
     await hass.config_entries.async_reload(config_entry.entry_id)
