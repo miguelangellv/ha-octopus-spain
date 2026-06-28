@@ -1,11 +1,14 @@
+"""Tests for Octopus Spain sensors."""
+
 from unittest.mock import AsyncMock, patch, MagicMock
 
 from homeassistant.core import HomeAssistant
 
-from custom_components.octopus_spain.sensor import async_setup_entry
+from custom_components.octopus_spain.sensor import async_setup_entry, OctopusWallet
 
 
 async def test_async_setup_entry_creates_sensors(hass: HomeAssistant):
+    """Test that async_setup_entry creates the expected sensors."""
     # Mock data to be returned by coordinator
     mock_data = {
         "12345": {
@@ -48,7 +51,8 @@ async def test_async_setup_entry_creates_sensors(hass: HomeAssistant):
         assert len(sensors) == 8
 
 
-async def test_wallet_sensor_value(hass: HomeAssistant):
+async def test_wallet_sensor_value():
+    """Test the wallet sensor value is correctly updated from the coordinator."""
     mock_data = {
         "12345": {
             "solar_wallet": 10.0,
@@ -57,11 +61,10 @@ async def test_wallet_sensor_value(hass: HomeAssistant):
     mock_coordinator = MagicMock()
     mock_coordinator.data = mock_data
 
-    from custom_components.octopus_spain.sensor import OctopusWallet
-
     sensor = OctopusWallet("12345", "solar_wallet", "Solar Wallet", mock_coordinator, True)
     sensor.async_write_ha_state = MagicMock()
 
+    # pylint: disable=protected-access
     sensor._handle_coordinator_update()
 
     assert sensor.native_value == 10.0

@@ -57,6 +57,9 @@ packages = ["custom_components/octopus_spain"]
 line-length = 140
 src = ["custom_components/octopus_spain"]
 
+[tool.pylint.MAIN]
+init-hook = "import sys; sys.path.append('custom_components')"
+
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length = 140
 
