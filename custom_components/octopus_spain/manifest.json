@@ -3,9 +3,9 @@
   "name": "Octopus Spain",
   "codeowners": ["@miguelangellv"],
   "config_flow": true,
-  "documentation": "https://github.com/MiguelAngelLV/octopus_spain",
+  "documentation": "https://github.com/miguelangellv/octopus_spain",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/MiguelAngelLV/issues",
+  "issue_tracker": "https://github.com/miguelangellv/issues",
   "requirements": ["python-graphql-client==0.4.3", "tariff-td==1.1"],
-  "version": "0.1.0"
+  "version": "1.2.0"
 }
