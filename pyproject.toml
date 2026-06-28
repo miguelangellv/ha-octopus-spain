@@ -23,10 +23,14 @@ Issues = "https://github.com/miguelangel_lv/ha-octopus-spain/issues"
 Repository = "https://github.com/miguelangel_lv/ha-octopus-spain"
 
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+pythonpath = ["."]
+
 [tool.ruff.lint]
 ignore = [
   "A005", # It is just wrong
-  "ANN101", # Self... explanatory
   "ANN401", # Opiniated warning on disallowing dynamically typed expressions
   "D203", # Conflicts with other rules
   "D213", # Conflicts with other rules
@@ -47,11 +51,11 @@ ignore = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["custom_components/ha-octopus-spain"]
+packages = ["custom_components/octopus_spain"]
 
 [tool.ruff]
 line-length = 140
-src = ["custom_components/ha-octopus-spain"]
+src = ["custom_components/octopus_spain"]
 
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length = 140
