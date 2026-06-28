@@ -11,7 +11,12 @@ async def test_async_setup_entry_creates_sensors(hass: HomeAssistant):
         "12345": {
             "solar_wallet": 10.0,
             "octopus_credit": 20.0,
-            "last_invoice": {"amount": 50.0, "issued": "2026-06-01", "start": "2026-05-01", "end": "2026-05-31"},
+            "last_invoice": {
+                "amount": 50.0,
+                "issued": "2026-06-01",
+                "start": "2026-05-01",
+                "end": "2026-05-31"
+            },
             "prices": {
                 "peak": 0.1,
                 "standard": 0.05,
@@ -19,8 +24,8 @@ async def test_async_setup_entry_creates_sensors(hass: HomeAssistant):
                 "peak_with_taxes": 0.12,
                 "standard_with_taxes": 0.07,
                 "valley_with_taxes": 0.04,
-                "surplus": 0.01,
-            },
+                "surplus": 0.01
+            }
         }
     }
 
@@ -41,12 +46,11 @@ async def test_async_setup_entry_creates_sensors(hass: HomeAssistant):
         # Verify that async_add_entities was called
         assert mock_async_add_entities.called
         sensors = mock_async_add_entities.call_args[0][0]
-
+        
         # We expect sensors for:
         # Wallet, Credit, Invoice, CurrentPrice, Price(peak), Price(standard), Price(valley), Price(surplus)
         # That's 8 sensors
         assert len(sensors) == 8
-
 
 async def test_wallet_sensor_value(hass: HomeAssistant):
     mock_data = {
@@ -56,12 +60,11 @@ async def test_wallet_sensor_value(hass: HomeAssistant):
     }
     mock_coordinator = MagicMock()
     mock_coordinator.data = mock_data
-
+    
     from custom_components.octopus_spain.sensor import OctopusWallet
-
     sensor = OctopusWallet("12345", "solar_wallet", "Solar Wallet", mock_coordinator, True)
     sensor.async_write_ha_state = MagicMock()
-
+    
     sensor._handle_coordinator_update()
-
+    
     assert sensor.native_value == 10.0
