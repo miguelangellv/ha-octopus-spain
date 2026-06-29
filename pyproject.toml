@@ -1,6 +1,6 @@
 [project]
 name = "ha-octopus-spain"
-version = "1.3.0"
+version = "1.3.1"
 description = "Componente para Home Assistant que muestra los datos de consumo y facturación de Octopus Energy España"
 authors = [
     { name = "Miguel Ángel López", email = "miguel.angel.lopez.vicente@gmail.com" }
