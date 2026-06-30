@@ -77,6 +77,56 @@ class OctopusSpain:
                     result.append(spp["cups"])
         return result
 
+    async def readings(self, account: str, start, end, granularity: str = "HOUR"):
+        """Get import (consumption) and export readings between start and end."""
+        query = """
+            query ($account: String!, $start: DateTime!, $end: DateTime!, $granularity: TimeGranularities) {
+              supplyPoints(accountNumber: $account) {
+                edges { node {
+                  readings(startAt: $start, endAt: $end, readingType: INTERVAL,
+                           timeGranularity: $granularity, timezone: "Europe/Madrid", units: [KILOWATT_HOURS]) {
+                    importReadings(first: 20000) { edges { node { value units intervalStart intervalEnd } } }
+                    exportReadings(first: 20000) { edges { node { value units intervalStart intervalEnd } } }
+                  }
+                } }
+              }
+            }
+        """
+        headers = {"authorization": self._token}
+        client = GraphqlClient(endpoint=GRAPH_QL_ENDPOINT, headers=headers)
+        variables = {
+            "account": account,
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+            "granularity": granularity,
+        }
+        response = await client.execute_async(query, variables)
+        edges = response["data"]["supplyPoints"]["edges"]
+        if not edges:
+            return {"import": [], "export": []}
+        node = edges[0]["node"]["readings"]
+        return {
+            "import": self._parse_readings(node["importReadings"]["edges"]),
+            "export": self._parse_readings(node["exportReadings"]["edges"]),
+        }
+
+    @staticmethod
+    def _parse_readings(edges):
+        """Convert GraphQL reading edges into [{start, end, value}] (kWh)."""
+        out = []
+        for e in edges:
+            n = e["node"]
+            if n.get("value") is None:
+                continue
+            if n.get("units") not in (None, "KILOWATT_HOURS"):
+                continue
+            out.append({
+                "start": datetime.fromisoformat(n["intervalStart"]),
+                "end": datetime.fromisoformat(n["intervalEnd"]),
+                "value": float(n["value"]),
+            })
+        return out
+
     async def account(self, account: str):
         """Get account data from Octopus Spain API."""
 
