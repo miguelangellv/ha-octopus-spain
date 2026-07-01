@@ -27,11 +27,18 @@ async def test_async_setup_entry_creates_sensors(hass: HomeAssistant):
         }
     }
 
-    # Patch OctopusCoordinator to avoid real API calls and return mock data
-    with patch("custom_components.octopus_spain.sensor.OctopusCoordinator", autospec=True) as mock_coordinator_class:
+    # Patch both coordinators to avoid real API calls
+    with (
+        patch("custom_components.octopus_spain.sensor.OctopusCoordinator", autospec=True) as mock_coordinator_class,
+        patch("custom_components.octopus_spain.sensor.EnergyCoordinator", autospec=True) as mock_energy_class,
+    ):
         mock_coordinator = mock_coordinator_class.return_value
         mock_coordinator.data = mock_data
         mock_coordinator.async_config_entry_first_refresh = AsyncMock()
+
+        mock_energy = mock_energy_class.return_value
+        mock_energy.data = {}
+        mock_energy.async_config_entry_first_refresh = AsyncMock()
 
         # Mock entry and async_add_entities
         mock_entry = MagicMock()

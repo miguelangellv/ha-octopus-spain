@@ -8,6 +8,16 @@ GRAPH_QL_ENDPOINT = "https://api.oees-kraken.energy/v1/graphql/"
 SOLAR_WALLET_LEDGER = "SOLAR_WALLET_LEDGER"
 ELECTRICITY_LEDGER = "SPAIN_ELECTRICITY_LEDGER"
 
+# The API caps the readings page size at 100 (a larger `first` returns
+# "Invalid pagination parameters"). We paginate with `after`/`endCursor`. With
+# 100 nodes per request we also stay well below the 10,000-node limit
+# (KT-CT-1189). A 12-month backfill (~8760 h) is ~88 requests per flow.
+READINGS_PAGE = 100
+
+
+class OctopusApiError(Exception):
+    """Error returned by the Octopus GraphQL API (a response with `errors`)."""
+
 
 class OctopusSpain:
     """Octopus Spain API."""
@@ -57,6 +67,110 @@ class OctopusSpain:
         response = await client.execute_async(query)
 
         return list(map(lambda a: a["number"], response["data"]["viewer"]["accounts"]))
+
+    async def cups(self, account: str):
+        """Get the electricity CUPS identifiers of an account."""
+        query = """
+            query ($account: String!) {
+              account(accountNumber: $account) {
+                properties { electricitySupplyPoints { cups } }
+              }
+            }
+        """
+        headers = {"authorization": self._token}
+        client = GraphqlClient(endpoint=GRAPH_QL_ENDPOINT, headers=headers)
+        response = await client.execute_async(query, {"account": account})
+        result = []
+        for prop in response["data"]["account"]["properties"] or []:
+            for spp in prop.get("electricitySupplyPoints", []) or []:
+                if spp.get("cups"):
+                    result.append(spp["cups"])
+        return result
+
+    async def readings(self, account: str, start, end, granularity: str = "HOUR"):
+        """Get import (consumption) and export readings between start and end.
+
+        Each flow is paginated separately to respect the API node limit.
+        """
+        return {
+            "import": await self._fetch_connection(account, start, end, granularity, "importReadings"),
+            "export": await self._fetch_connection(account, start, end, granularity, "exportReadings"),
+        }
+
+    async def _fetch_connection(self, account: str, start, end, granularity: str, field: str):
+        """Paginate one readings connection (importReadings or exportReadings)."""
+        query = (
+            """
+            query ($account: String!, $start: DateTime!, $end: DateTime!, $granularity: TimeGranularities, $first: Int!, $after: String) {
+              supplyPoints(accountNumber: $account) {
+                edges { node {
+                  readings(startAt: $start, endAt: $end, readingType: INTERVAL,
+                           timeGranularity: $granularity, timezone: "Europe/Madrid", units: [KILOWATT_HOURS]) {
+                    %s(first: $first, after: $after) {
+                      pageInfo { hasNextPage endCursor }
+                      edges { node { value units intervalStart intervalEnd } }
+                    }
+                  }
+                } }
+              }
+            }
+        """
+            % field
+        )
+
+        client = GraphqlClient(endpoint=GRAPH_QL_ENDPOINT, headers={"authorization": self._token})
+        results = []
+        cursor = None
+        while True:
+            response = await client.execute_async(
+                query,
+                {
+                    "account": account,
+                    "start": start.isoformat(),
+                    "end": end.isoformat(),
+                    "granularity": granularity,
+                    "first": READINGS_PAGE,
+                    "after": cursor,
+                },
+            )
+            if not response.get("data"):
+                raise OctopusApiError(self._error_message(response))
+            edges = response["data"]["supplyPoints"]["edges"]
+            if not edges:
+                return []
+            connection = edges[0]["node"]["readings"].get(field)
+            if connection is None:
+                raise OctopusApiError(self._error_message(response))
+            results.extend(self._parse_readings(connection["edges"]))
+            if not connection["pageInfo"]["hasNextPage"]:
+                return results
+            cursor = connection["pageInfo"]["endCursor"]
+
+    @staticmethod
+    def _error_message(response: dict) -> str:
+        errors = response.get("errors") or []
+        if errors:
+            return "; ".join(e.get("message", "") for e in errors)
+        return "Octopus API returned no data"
+
+    @staticmethod
+    def _parse_readings(edges):
+        """Convert GraphQL reading edges into [{start, end, value}] (kWh)."""
+        out = []
+        for e in edges:
+            n = e["node"]
+            if n.get("value") is None:
+                continue
+            if n.get("units") not in (None, "KILOWATT_HOURS"):
+                continue
+            out.append(
+                {
+                    "start": datetime.fromisoformat(n["intervalStart"]),
+                    "end": datetime.fromisoformat(n["intervalEnd"]),
+                    "value": float(n["value"]),
+                }
+            )
+        return out
 
     async def account(self, account: str):
         """Get account data from Octopus Spain API."""

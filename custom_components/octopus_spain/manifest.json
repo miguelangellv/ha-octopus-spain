@@ -5,6 +5,9 @@
     "@miguelangellv"
   ],
   "config_flow": true,
+  "after_dependencies": [
+    "recorder"
+  ],
   "documentation": "https://github.com/miguelangellv/octopus_spain",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/miguelangellv/issues",
