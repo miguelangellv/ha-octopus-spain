@@ -13,6 +13,7 @@ from homeassistant.components.recorder.statistics import (
     get_last_statistics,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.util.unit_conversion import EnergyConverter
 
 DOMAIN_SOURCE = "octopus_spain"
 
@@ -70,6 +71,7 @@ async def async_import_statistics(hass: HomeAssistant, cups: str, flow: str, rea
         name=f"Octopus {flow} {cups}",
         source=DOMAIN_SOURCE,
         statistic_id=statistic_id,
+        unit_class=EnergyConverter.UNIT_CLASS,
         unit_of_measurement="kWh",
     )
     data = [StatisticData(start=s["start"], state=s["state"], sum=s["sum"]) for s in stats]
