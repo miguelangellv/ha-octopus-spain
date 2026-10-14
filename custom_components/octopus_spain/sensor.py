@@ -17,9 +17,10 @@ from homeassistant.const import (
 from homeassistant.components.sensor import SensorEntityDescription, SensorEntity, SensorStateClass, SensorDeviceClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_PASSWORD, CONF_EMAIL, UPDATE_INTERVAL, PERIOD_PEAK_WITH_TAXES, PERIOD_STANDARD_WITH_TAXES, PERIOD_VALLEY_WITH_TAXES
+from .const import DOMAIN, CONF_PASSWORD, CONF_EMAIL, UPDATE_INTERVAL, PERIOD_PEAK_WITH_TAXES, PERIOD_STANDARD_WITH_TAXES, PERIOD_VALLEY_WITH_TAXES
 from .coordinator import EnergyCoordinator
 from .lib.octopus_spain import OctopusSpain
 
@@ -58,6 +59,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     await energy.async_refresh()
     for cups in energy.data or {}:
         sensors.append(OctopusLastDayConsumption(cups, energy))
+
+    # Group account and supply sensors under one service per config entry.
+    device_info = DeviceInfo(
+        identifiers={(DOMAIN, entry.entry_id)},
+        name="Octopus Spain",
+        manufacturer="Octopus Energy",
+        model="Cuenta Octopus Energy España",
+        entry_type=DeviceEntryType.SERVICE,
+    )
+    for sensor in sensors:
+        sensor._attr_device_info = device_info
 
     async_add_entities(sensors)
 
